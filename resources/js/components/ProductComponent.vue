@@ -22,16 +22,26 @@
                 <div class="card">
                     <h4 class="card-header">{{ isEditMode ? "Edit" : "Create" }}</h4>
                     <div class="card-body">
-                        <form @submit.prevent="store">
+                        <!--<alert-error :form="product" :message="message"></alert-error>-->
+                        <form @submit.prevent="isEditMode ? update() : store()">
                             <div class="form-group">
                                 <label>Name: </label>
                                 <input v-model="product.name" type="text" class="form-control" />
+                                <template v-if="errors.name">
+                                    <p class="text-danger text-sm" v-text="errors.name"></p>
+                                </template>
                             </div>
                             <div class="form-group mt-3">
                                 <label>Price: </label>
                                 <input v-model="product.price" type="number" class="form-control" />
+                                <template v-if="errors.price">
+                                    <p class="text-danger" v-text="errors.price"></p>
+                                </template>
                             </div>
-                            <button type="submit" class="btn btn-primary mt-3 py-2"><i class="fas fa-save m-1"></i>Save</button>
+                            <button type="submit" class="btn btn-primary mt-3 py-2">
+                                <i class="fas fa-save m-1"></i>
+                                {{ isEditMode ? "Update" : "Save" }}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -78,7 +88,8 @@ export default {
                 name: '',
                 price: '',
                 id: ''
-            }
+            },
+            errors:{},
         }
     },
     methods: {
@@ -89,6 +100,7 @@ export default {
                 })
         },
         create() {
+            this.errors = {}
             this.isEditMode = false;
             this.product.id = "";
             this.product.name = "";
@@ -101,29 +113,45 @@ export default {
                     this.product.id = "";
                     this.product.name = "";
                     this.product.price = "";
-                })
+                }).catch(error => {
+                    if (error.response) {
+                        let errors = error.response.data.errors;
+                        for (let key in errors) {
+                            this.errors[key] = errors[key][0]
+                        }
+                    }
+                });
         },
         edit(product) {
+            this.errors = {}
             this.isEditMode = true;
             this.product.id = product.id;
             this.product.name = product.name;
             this.product.price = product.price;
         },
         update() {
-            axios
-                .put(`/api/product/${this.product.id}`, this.product)
-                .then((response) => {
+            this.errors = {}
+            axios.put(`/api/product/${this.product.id}`, this.product)
+                .then(response => {
                     this.view();
                     this.product.id = "";
                     this.product.name = "";
                     this.product.price = "";
+                }).catch(error => {
+                    if (error.response) {
+                        let errors = error.response.data.errors;
+                        for (let key in errors) {
+                            this.errors[key] = errors[key][0]
+                        }
+                    }
                 });
         },
         destroy(id) {
             if (!confirm("Are you sure you want to delete?")) {
                 return;
             }
-            axios.delete(`/api/product/${id}`).then((response) => this.view());
+            axios.delete(`/api/product/${id}`)
+                .then(response => this.view());
         },
     },
     created() {
